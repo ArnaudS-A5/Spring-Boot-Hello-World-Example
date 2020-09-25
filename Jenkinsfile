@@ -56,15 +56,21 @@ pipeline {
               recordIssues enabledForFailure: true, tool: pmdParser(pattern: '**/target/pmd.xml')
             }
           }
-        }	
-		stage('Quality Analysis Sonarqube') {
-            environment {
+        }
+        
+        
+		stage('Quality Analysis Sonarqube')
+		{
+            environment
+            {
                 SCANNER_HOME = tool 'sonarQube'
                 ORGANIZATION = "EQL"
                 PROJECT_NAME = "SpringBootProject"
             }
-            steps {
-                withSonarQubeEnv('sonarQube') {
+            steps
+            {
+                withSonarQubeEnv('sonarQube')
+                {
                     sh '''$SCANNER_HOME/bin/sonar-scanner \
                     -Dsonar.java.sources=src \
                     -Dsonar.java.binaries=target \
@@ -72,9 +78,11 @@ pipeline {
                     -Dsonar.language=java \
                     -Dsonar.sourceEncoding=UTF-8'''
                 }
-		    
-		        stage('Continuous delivery') {
-          steps {
+            }
+         }  
+            
+         stage('Continuous delivery') {
+           	 steps {
              script {
               sshPublisher(
                continueOnError: false, failOnError: true,
@@ -92,7 +100,7 @@ pipeline {
                     cd project;
                     sudo docker build -t springbootapp1 . ;
                     docker tag springbootapp1 babsmbaye/springbootapp1:1.0
-                    docker push babsmbaye/springbootapp1:1.0 """
+                    docker push alexandre777/springboot:1.0 """
                   )
                  ])
                ])
@@ -124,8 +132,13 @@ pipeline {
              }
           }
         }
-
-            }
-        }
+            
+            
+            
+            
+            
+            
+            
+        
     }
 }
