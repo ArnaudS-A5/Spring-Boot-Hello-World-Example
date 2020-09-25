@@ -125,7 +125,7 @@ pipeline {
                     sudo docker stop \$(docker ps -a -q);
                     sudo docker rm \$(docker ps -a -q);
                     sudo docker rmi -f \$(docker images -a -q);
-                    sudo docker run -d -p 8080:8080 babsmbaye/springbootapp1:1.0; """
+                    sudo docker run -d -p 8080:8080 alexandre777/springboot:1.0; """
                   )
                  ])
                ])
