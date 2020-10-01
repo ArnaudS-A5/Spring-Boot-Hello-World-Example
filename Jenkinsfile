@@ -1,144 +1,114 @@
-pipeline {
-    agent any
-    
-    tools {
-        maven 'Maven'
-    }
-    
-    stages {
-        
-        stage('Checkout') {
-            steps {
-                echo "-=- Checkout project -=-"
-                git url: 'https://github.com/ArnaudS-A5/Spring-Boot-Hello-World-Example.git'
-            }
-        }
-        
-        stage('Package') {
-            steps {
-                echo "-=- packaging project -=-"
-                sh 'mvn clean package -Dmaven.test.skip=true'
-            }
-            
-        }
+// Powered by Infostretch 
 
+timestamps {
 
-        stage('Test') {
-            steps {
-                echo "-=- Test project -=-"
-                sh 'mvn clean test'
-            }
-            
-            post {
-                success {
-                    junit 'target/surefire-reports/*.xml'
-                }
-            }
-        }     
-        stage('Code coverage') {
-            steps {
-                jacoco( 
-                      execPattern: 'target/*.exec',
-                      classPattern: 'target/classes',
-                      sourcePattern: 'src/main/java',
-                      exclusionPattern: 'src/test*'
-                )
-            }
-        }
-        stage('Sanity check') {
-          steps {
-            echo "-=- Sanity Check Test project -=-"
-            sh 'mvn clean install checkstyle:checkstyle pmd:pmd'
-          }
-          post {
-            always {
-              recordIssues enabledForFailure: true, tools: [checkStyle()]
-              recordIssues enabledForFailure: true, tool: pmdParser(pattern: '**/target/pmd.xml')
-            }
-          }
-        }
-        
-        
-		stage('Quality Analysis Sonarqube')
-		{
-            environment
-            {
-                SCANNER_HOME = tool 'sonarQube'
-                ORGANIZATION = "EQL"
-                PROJECT_NAME = "SpringBootProject"
-            }
-            steps
-            {
-                withSonarQubeEnv('sonarQube')
-                {
-                    sh '''$SCANNER_HOME/bin/sonar-scanner \
-                    -Dsonar.java.sources=src \
-                    -Dsonar.java.binaries=target \
-                    -Dsonar.projectKey=$PROJECT_NAME \
-                    -Dsonar.language=java \
-                    -Dsonar.sourceEncoding=UTF-8'''
-                }
-            }
-         }  
-            
-         stage('Continuous delivery') {
-           	 steps {
-             script {
-              sshPublisher(
-               continueOnError: false, failOnError: true,
-               publishers: [
-                sshPublisherDesc(
-                 configName: "docker-host",
-                 verbose: true,
-                 transfers: [
-                  sshTransfer(
-                   sourceFiles: "target/*.jar",
-                   removePrefix: "/target",
-                   remoteDirectory: "",
-                   execCommand: """
-                    sudo mv demo-0.0.1-SNAPSHOT.jar /home/vagrant/project;
-                    cd project;
-                    sudo docker build -t springbootapp1 . ;
-                    docker tag springbootapp1 alexandre777/springboot:1.0
-                    docker push alexandre777/springboot:1.0 """
-                  )
-                 ])
-               ])
-             }
-          }
-        } 
-         stage('Continuous deployment') {
-          steps {
-             script {
-              sshPublisher(
-               continueOnError: false, failOnError: true,
-               publishers: [
-                sshPublisherDesc(
-                 configName: "docker-host",
-                 verbose: true,
-                 transfers: [
-                  sshTransfer(
-                   sourceFiles: "",
-                   removePrefix: "",
-                   remoteDirectory: "",
-                   execCommand: """
-                    sudo docker stop \$(docker ps -a -q);
-                    sudo docker rm \$(docker ps -a -q);
-                    sudo docker rmi -f \$(docker images -a -q);
-                    sudo docker run -d -p 8080:8080 alexandre777/springboot:1.0; """
-                  )
-                 ])
-               ])
-             }
-          }
-        }
-            
-            
-            
-            
-            
-            
-            
-        
-    }
+node () {
+
+	stage ('projet-packaging - Checkout') {
+ 	 checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'b17cc096-ab2b-4662-a8f3-ccdf9ff43fb8', url: 'https://github.com/ArnaudS-A5/Spring-Boot-Hello-World-Example.git']]]) 
+	}
+	stage ('projet-packaging - Build') {
+ 			// Maven build step
+	withMaven(maven: 'Maven') { 
+ 			if(isUnix()) {
+ 				sh "mvn clean package " 
+			} else { 
+ 				bat "mvn clean package " 
+			} 
+ 		} 
+	}
+	stage ('projet métrique - Build') {
+ 	
+withEnv(["JAVA_HOME=${ tool '"+JDK+"' }", "PATH=${env.JAVA_HOME}/bin"]) { 
+		// Maven build step
+	withMaven(jdk: '(Hérite du job)', maven: 'Maven') { 
+ 			if(isUnix()) {
+ 				sh "mvn clean test pmd:check findbugs:check checkstyle:checkstyle " 
+			} else { 
+ 				bat "mvn clean test pmd:check findbugs:check checkstyle:checkstyle " 
+			} 
+ 		}
+// Unable to convert a build step referring to "hudson.plugins.sonar.SonarRunnerBuilder". Please verify and convert manually if required. 
+	}
+}
+	stage ('projet-livraison - Build') {
+ 			// Maven build step
+	withMaven(maven: 'Maven') { 
+ 			if(isUnix()) {
+ 				sh "mvn clean install " 
+			} else { 
+ 				bat "mvn clean install " 
+			} 
+ 		}
+// Unable to convert a build step referring to "jenkins.plugins.publish__over__ssh.BapSshBuilderPlugin". Please verify and convert manually if required. 
+	}
+	stage ('projet deploy - Build') {
+ 	
+// Unable to convert a build step referring to "jenkins.plugins.publish__over__ssh.BapSshBuilderPlugin". Please verify and convert manually if required. 
+	}
+	stage ('projet-selenium - Checkout') {
+ 	 checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'b17cc096-ab2b-4662-a8f3-ccdf9ff43fb8', url: 'https://github.com/ArnaudS-A5/example-springboot-automation-test-selenium.git']]]) 
+	}
+	stage ('projet-selenium - Build') {
+ 			// Shell build step
+sh """ 
+chmod +x driver/chromedriver.exe;
+mvn clean verify 
+ """		// Maven build step
+	withMaven(maven: 'Maven') { 
+ 			if(isUnix()) {
+ 				sh "mvn clean verify surefire-report:report-only " 
+			} else { 
+ 				bat "mvn clean verify surefire-report:report-only " 
+			} 
+ 		} 
+	}
+	stage ('projet-tests - Checkout') {
+ 	 checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'b17cc096-ab2b-4662-a8f3-ccdf9ff43fb8', url: 'https://github.com/ArnaudS-A5/Spring-Boot-Hello-World-Example.git']]]) 
+	}
+	stage ('projet-tests - Build') {
+ 			// Maven build step
+	withMaven(maven: 'Maven') { 
+ 			if(isUnix()) {
+ 				sh "mvn clean test " 
+			} else { 
+ 				bat "mvn clean test " 
+			} 
+ 		}
+		// JUnit Results
+		junit '**/target/surefire-reports/*.xml' 
+	}
+	stage ('projet-livraison - Build') {
+ 			// Maven build step
+	withMaven(maven: 'Maven') { 
+ 			if(isUnix()) {
+ 				sh "mvn clean install " 
+			} else { 
+ 				bat "mvn clean install " 
+			} 
+ 		}
+// Unable to convert a build step referring to "jenkins.plugins.publish__over__ssh.BapSshBuilderPlugin". Please verify and convert manually if required. 
+	}
+	stage ('projet deploy - Build') {
+ 	
+// Unable to convert a build step referring to "jenkins.plugins.publish__over__ssh.BapSshBuilderPlugin". Please verify and convert manually if required. 
+	}
+	stage ('projet-selenium - Checkout') {
+ 	 checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'b17cc096-ab2b-4662-a8f3-ccdf9ff43fb8', url: 'https://github.com/ArnaudS-A5/example-springboot-automation-test-selenium.git']]]) 
+	}
+	stage ('projet-selenium - Build') {
+ 			// Shell build step
+sh """ 
+chmod +x driver/chromedriver.exe;
+mvn clean verify 
+ """		// Maven build step
+	withMaven(maven: 'Maven') { 
+ 			if(isUnix()) {
+ 				sh "mvn clean verify surefire-report:report-only " 
+			} else { 
+ 				bat "mvn clean verify surefire-report:report-only " 
+			} 
+ 		} 
+	}
+}
 }
